@@ -866,23 +866,46 @@ _A1783_0421 = {
     "a3": {
         BYTES: {
             "00": {
-                NAME: "working_status",  # 0 idle / 1 discharge / 2 charge / 3 sleep / 4 shutdown / 5 ???
+                # Flow state, not the source enum. App: workStatus; the APK enum
+                # (0 idle/1 discharge/2 charge/3 sleep/4 shutdown) is not closed -- 5 occurs.
+                NAME: "working_status",
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
+            "01": {
+                NAME: "error_code",  # app: errorCode
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
+            "02": {
+                NAME: "package_count",  # app: packageCount
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
+            "03": {
+                NAME: "package_use_count",  # app: packageUseCount
                 TYPE: DeviceHexDataTypes.ui.value,
             },
             "04": {
-                NAME: "ac_input_limit_max",  # Max supported charge limit, seems fix
+                NAME: "ac_input_limit_max",  # app: maxInputPower. Max supported charge limit, seems fix
                 TYPE: DeviceHexDataTypes.sile.value,
             },
+            "06": {
+                NAME: "upgrade_progress",  # app: upgradeProgress, 0-100 during OTA
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
             "07": {
+                # app: wifiSignalStrength. RSSI encoded as 2 * (100 + rssi_dbm)
                 NAME: "wifi_signal",
                 TYPE: DeviceHexDataTypes.ui.value,
             },
             "08": {
-                NAME: "mtu_size",
+                NAME: "mtu_size",  # app: mtuSize, per-device (204 here, 220 elsewhere)
                 TYPE: DeviceHexDataTypes.sile.value,
             },
+            "09": {
+                NAME: "weak_light_lock_flag",  # app: weakLightLockFlag
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
             "10": {
-                NAME: "silent_charge_power",
+                NAME: "silent_charge_power",  # app: silentRechargePower, W
                 TYPE: DeviceHexDataTypes.sile.value,
             },
         }
@@ -920,7 +943,7 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.sile.value,
             },
             "15": {
-                NAME: "display_timeout_seconds",  # 0 (Never), 10, 30, 60, 300, 1800
+                NAME: "display_timeout_seconds",  # 0 (Never), 10, 20, 30, 60, 300, 1800
                 TYPE: DeviceHexDataTypes.sile.value,
             },
             "17": {
@@ -951,6 +974,19 @@ _A1783_0421 = {
                 NAME: "min_soc",  # min_soc: 1, 5, 10, 15, 20 %
                 TYPE: DeviceHexDataTypes.ui.value,
             },
+            "25": {
+                # app: deviceLanguage. English (0), Chinese (1), French (2), German (3),
+                # Japanese (4)
+                NAME: "display_language",
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
+            "31": [
+                {NAME: "outage_alert_switch", MASK: 0x02},  # app: outageAlertSwitch
+                # Input accepted (0), disabled by the app's "Battery-Only Power"
+                # (acInputDisableSwitch) (1), no mains present (2). The switch clears on
+                # BMS low battery, mains unplug or restart; TOU does not run while set.
+                {NAME: "ac_input_disable_state", MASK: 0x0C},
+            ],
         }
     },
     "a5": {
@@ -961,7 +997,11 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.ui.value,
             },
             "01": {
-                NAME: "battery_status",  # 0=standby, 1=discharge, 2=Charge
+                # app: chargeDischargeStatus, confirmed 450/450 against the raw tag.
+                # Trips on any flow, where a3.00 working_status waits for a threshold.
+                # NOT battery_status: this model carries both flow states, so the
+                # library's single battery_status cannot name them apart.
+                NAME: "charge_discharge_status",
                 TYPE: DeviceHexDataTypes.ui.value,
             },
             "02": {
@@ -981,7 +1021,7 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.sile.value,
             },
             "02": {
-                NAME: "ac_input_power",  # Input power total charge
+                NAME: "ac_input_power_total",  # Input power total charge
                 TYPE: DeviceHexDataTypes.sile.value,
             },
             "04": {
@@ -995,7 +1035,8 @@ _A1783_0421 = {
                 SIGNED: False,
             },
             "08": {
-                NAME: "main_battery_soc",  # SOC of main battery only
+                # Main pack only; does not include exp_1_soc
+                NAME: "main_battery_soc",
                 TYPE: DeviceHexDataTypes.ui.value,
             },
         },
@@ -1011,11 +1052,33 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.sile.value,
             },
             "03": {
-                NAME: "ac_input_power_switch",  # Off (0), On (1)
+                # Mains lead present, not power flowing, and not a user switch
+                NAME: "ac_input_status",
                 TYPE: DeviceHexDataTypes.ui.value,
             },
             "04": {
-                NAME: "pv_input_power?",  # Supposed PV input, but mirrors a6.02
+                # Not PV: this is the AC block's own view of the input, equal to the
+                # a6.02 total at 1796/1796. It reads AC alone under simultaneous AC+DC
+                # input and 0 while DC flows, which is what rules PV out -- a PV field
+                # would track the DC side, and a total would sum both.
+                NAME: "ac_input_power",
+                TYPE: DeviceHexDataTypes.sile.value,
+            },
+        }
+    },
+    "a8": {
+        BYTES: {
+            "00": {
+                # Port senses rather than switches: reads 1 at zero DC input power
+                NAME: "dc_input_status",
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
+            "01": {
+                # The DC block's own view of the input, equal to the a6.04 total at
+                # 7431/7431 -- including 152 rows with DC actually flowing (2026-08-18
+                # dual input, 79-85 W), so the match is not an artefact of both sitting
+                # at zero.
+                NAME: "dc_input_power",
                 TYPE: DeviceHexDataTypes.sile.value,
             },
         }
@@ -1080,6 +1143,8 @@ _A1783_0421 = {
             },
         }
     },
+    # Emitted even with no pack fitted, then carrying sentinels (SN all-zero, temperature
+    # 0xEF, soc 0). Gate on exp_1_connection_status == 1, not on tag presence.
     "c0": {
         BYTES: [
             # Field has flexible byte offsets, depending on SN length
@@ -1088,20 +1153,72 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.str.value,
             },
             {
+                NAME: "exp_1_number",  # app: subPackageNumber. Fixed slot index; A1783 takes one pack
+                TYPE: DeviceHexDataTypes.ui.value,
+                OFFSET: 0,
+            },
+            {
+                # 4 bytes LE, u32 reads 0xMMmmppbb
+                NAME: "exp_1_version",  # app: subPackageVersion
+                TYPE: DeviceHexDataTypes.var.value,
+                "values": 4,
+                "reversed": True,
+                OFFSET: 0,
+            },
+            {
                 NAME: "exp_1_temperature",
                 TYPE: DeviceHexDataTypes.ui.value,
                 SIGNED: True,
-                OFFSET: 5,
+                OFFSET: 0,
+            },
+            {
+                # Port-flow code while the expansion holds the bus: charging (2), discharging (1),
+                # idle (0); 0 while the main pack does
+                NAME: "exp_1_status",  # app: subPackageStatus
+                TYPE: DeviceHexDataTypes.ui.value,
+                OFFSET: 0,
             },
             {
                 NAME: "exp_1_soc",
                 TYPE: DeviceHexDataTypes.ui.value,
-                OFFSET: 1,
+                OFFSET: 0,
+            },
+            {
+                NAME: "exp_1_health",  # app: subPackageHealth
+                TYPE: DeviceHexDataTypes.ui.value,
+                OFFSET: 0,
+            },
+            {
+                # Firmware constant 1; the locate blink runs without changing it
+                NAME: "exp_1_blink_status",  # app: subPackageBlinkStatus
+                TYPE: DeviceHexDataTypes.ui.value,
+                OFFSET: 0,
+            },
+            {
+                # Reported output state; the expansion BMS re-closes it ~2 s after an app "off"
+                NAME: "exp_1_switch_status",  # app: subPackageSwitchStatus
+                TYPE: DeviceHexDataTypes.ui.value,
+                OFFSET: 0,
+            },
+            {
+                NAME: "exp_1_error_code",  # app: subPackageErrorCode
+                TYPE: DeviceHexDataTypes.ui.value,
+                OFFSET: 0,
+            },
+            {
+                NAME: "exp_1_connection_status",  # app: subPackageConnectionStatus. 1 = pack fitted
+                TYPE: DeviceHexDataTypes.ui.value,
+                OFFSET: 0,
+            },
+            {
+                NAME: "exp_1_balance_status",  # app: subPackageBalanceStatus
+                TYPE: DeviceHexDataTypes.ui.value,
+                OFFSET: 0,
             },
             {
                 NAME: "exp_1_type",
                 TYPE: DeviceHexDataTypes.str.value,
-                OFFSET: 6,
+                OFFSET: 0,
             },
         ]
     },
@@ -1129,6 +1246,8 @@ _A1783_0421 = {
         # TOU mode selector + backup + Time-of-Use plan
         BYTES: [
             {
+                # Non-zero only with TOU on, cloud-bound, AC input present and not disabled,
+                # no alternator charger, and the hour inside a schedule range
                 NAME: "active_tariff",  # TOUSystemStatus: 0=None, 1=Peak, 2=Mid Peak, 3=Off Peak
                 TYPE: DeviceHexDataTypes.ui.value,
             },
@@ -1166,7 +1285,9 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.ui.value,
             },
             {
-                NAME: "backup_switch",
+                # During its window charges past max_soc and above ac_input_limit;
+                # independent of ac_fast_charge_switch (Ultrafast)
+                NAME: "backup_switch",  # app: Fast Charging Plan
                 TYPE: DeviceHexDataTypes.ui.value,
             },
             {
@@ -1174,16 +1295,19 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.ui.value,
             },
             {
-                NAME: "backup_start_timestamp",
+                NAME: "backup_start_timestamp",  # fast charging plan window
                 TYPE: DeviceHexDataTypes.var.value,
                 SIGNED: False,
             },
             {
+                # 0xFFFFFFFF means "ongoing", not a time; published raw it reads as 2106
                 NAME: "backup_end_timestamp",
                 TYPE: DeviceHexDataTypes.var.value,
                 SIGNED: False,
             },
             {
+                # Running window of either Backup Mode plan (Fast Charging Plan or
+                # Storm Guard); 0 when none is running
                 NAME: "auto_backup_start_timestamp",
                 TYPE: DeviceHexDataTypes.var.value,
                 SIGNED: False,
@@ -1195,36 +1319,147 @@ _A1783_0421 = {
             },
         ]
     },
-    # "da" # Field used for screen schedule and theme settings
-    "f9": {
+    # Screensaver / Display Plan schedule
+    "da": {
+        BYTES: {
+            "00": [
+                {NAME: "screen_saver_switch", MASK: 0x80},  # app: screenSaverSwitch
+                # app: lcdTheme. Clock style 1 (0), 2 (1), 3 (2)
+                {NAME: "lcd_theme", MASK: 0x7F},
+            ],
+            "10": {
+                NAME: "lcd_time_format",  # app: lcdTimeFormat. 24-hour (1), 12-hour (0)
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
+            "11": {
+                # app: lcdStartTime / dayStartTime. Minutes from midnight as a plain integer;
+                # not *_time, which the decoder reserves for the HH:MM byte-pair fields.
+                NAME: "day_start_minutes",
+                TYPE: DeviceHexDataTypes.sile.value,
+            },
+            "13": {
+                NAME: "day_end_minutes",  # app: lcdEndTime / dayEndTime, minutes from midnight
+                TYPE: DeviceHexDataTypes.sile.value,
+            },
+            "15": {
+                NAME: "lcd_repeat_cycle",  # app: lcdRepeatCycle. Weekday mask, bit0=Mon .. bit6=Sun
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
+            "16": {
+                # app: dayNightSwitch. Clearing it zeroes the period-2 group (18, 19, 21)
+                # and extends the day end to the night end.
+                NAME: "day_night_split_switch",
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
+            "17": {
+                NAME: "day_brightness_level",  # app: dayBrightnessLevel. 5% (0), 20% (1)
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
+            "18": {
+                NAME: "night_brightness_level",  # app: nightBrightnessLevel. 5% (0), 20% (1)
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
+            "19": {
+                NAME: "night_start_minutes",  # app: nightStartTime, minutes from midnight
+                TYPE: DeviceHexDataTypes.sile.value,
+            },
+            "21": {
+                NAME: "night_end_minutes",  # minutes from midnight
+                TYPE: DeviceHexDataTypes.sile.value,
+            },
+        }
+    },
+    # The battery fault blocking the output-memory restore (app: memorySwitchData); all
+    # zero while none. The memory feature's own on/off state is port_memory_switch.
+    "dc": {
         BYTES: {
             "00": {
-                NAME: "sw_version",
+                # app: memorySwitchErrorCode. None (0), discharge over-temp (1), discharge
+                # low-temp (2), low battery (3), BMS comm error (4), over-current (5),
+                # MOS over-temp (6), pre-discharge MOS fault (7), main charge MOS fault (8),
+                # main discharge MOS fault (9)
+                NAME: "memory_switch_error_code",
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
+            "01": {
+                # app: memorySwitchErrorTimestamp. When the restore is due: fault time plus
+                # the configured recovery delay
+                NAME: "memory_switch_error_timestamp",
+                TYPE: DeviceHexDataTypes.var.value,
+            },
+        }
+    },
+    # Seven 4-byte version quads, LE (02 02 09 01 reads v1.9.2.2). Slots 00 and 08 are
+    # unnamed: on this hardware they duplicate or read v0.0.0.0 and cannot be told apart.
+    "f9": {
+        BYTES: {
+            "04": {
+                NAME: "sub_mcu_version",  # app: subMCUVersion
                 TYPE: DeviceHexDataTypes.var.value,
                 "values": 4,
                 "reversed": True,
             },
-            "04": {
-                NAME: "mcu_version",
+            "12": {
+                # v0.0.0.0 unless the inverter is energised, by either AC path. Presence
+                # lags the switch by seconds; not an instantaneous state bit.
+                NAME: "inverter_version",  # app: INVVersion
                 TYPE: DeviceHexDataTypes.var.value,
                 "values": 4,
                 "reversed": True,
             },
             "16": {
-                NAME: "bms_version",
+                NAME: "bms_version",  # app: BMSVersion, main pack
+                TYPE: DeviceHexDataTypes.var.value,
+                "values": 4,
+                "reversed": True,
+            },
+            "20": {
+                # Mirrors c0's exp_1_version; v0.0.0.0 with no pack fitted
+                NAME: "sub_package_version",  # app: subPackageVersion
                 TYPE: DeviceHexDataTypes.var.value,
                 "values": 4,
                 "reversed": True,
             },
             "24": {
-                NAME: "hw_version",
+                NAME: "module_version",  # app: moduleVersion
                 TYPE: DeviceHexDataTypes.var.value,
                 "values": 4,
                 "reversed": True,
             },
         }
     },
-    "fd": {NAME: "storm_guard_timestamp", SIGNED: False},
+    # The firmware's capability flags (app: the support* device-info fields), constant per
+    # firmware: bytes 7-19 are unused. Byte 6 reads 07 on v1.2.1.1 and 35 on v1.2.1.6.
+    "fa": {
+        BYTES: {
+            "00": {NAME: "support_ac_energy_mode", TYPE: DeviceHexDataTypes.ui.value},
+            "01": {NAME: "support_car_charge_mode", TYPE: DeviceHexDataTypes.ui.value},
+            "02": {NAME: "support_parallel_upgrade", TYPE: DeviceHexDataTypes.ui.value},
+            "03": {NAME: "support_get_upgrade_info", TYPE: DeviceHexDataTypes.ui.value},
+            "04": {NAME: "station_protocol_version", TYPE: DeviceHexDataTypes.ui.value},
+            "05": [
+                {NAME: "support_transaction_id", MASK: 0x01},
+                {NAME: "support_memory_switch", MASK: 0x02},
+                {NAME: "support_backup_disaster", MASK: 0x04},
+                {NAME: "support_upgrade_record", MASK: 0x08},
+                {NAME: "support_screen_time_period", MASK: 0x10},
+                {NAME: "support_output_status", MASK: 0x20},
+                {NAME: "support_charging_limits", MASK: 0x40},
+                {NAME: "support_set_country_code", MASK: 0x80},
+            ],
+            "06": [
+                {NAME: "support_pps_tou", MASK: 0x01},
+                {NAME: "memory_switch_two", MASK: 0x02},
+                {NAME: "support_silent_recharge", MASK: 0x04},
+                {NAME: "support_outage_alert", MASK: 0x08},
+                {NAME: "support_ac_input_disable", MASK: 0x10},
+                {NAME: "unknown_0421_fa_06_b5", MASK: 0x20},  # set from v1.2.1.6
+            ],
+        }
+    },
+    # ASCII digits (ms epoch), not a number. Absent on unsolicited telemetry; identifies the
+    # last request, so it persists across following frames. storm_guard_switch is d9[17].
+    "fd": {NAME: "transaction_id", TYPE: DeviceHexDataTypes.str.value},
     "fe": {NAME: "msg_timestamp"},
 }
 
@@ -5260,10 +5495,49 @@ SOLIXMQTTMAP: Final[dict] = {
         },
         # Interval: ~3-5 seconds, but only with realtime trigger
         "0421": _A1783_0421,
+        # Event report (app: ReportPpsEventInfo), sent when a backup window starts or
+        # ends and on AC grid loss
+        "0425": {
+            # Auto backup window started (7) / ended (8), fast charging plan started (10) /
+            # ended (11), AC grid loss (89)
+            "a2": {NAME: "event_code"},
+            "a3": {
+                BYTES: {
+                    "00": {
+                        # Window start, or the SoC % for AC grid loss (89); 0 on end events
+                        NAME: "event_start_timestamp",
+                        TYPE: DeviceHexDataTypes.var.value,
+                        SIGNED: False,
+                    },
+                }
+            },
+            "a4": {
+                BYTES: {
+                    "00": {
+                        # Window end, 0xFFFFFFFF if open-ended; 0 on end events
+                        NAME: "event_end_timestamp",
+                        TYPE: DeviceHexDataTypes.var.value,
+                        SIGNED: False,
+                    },
+                }
+            },
+        },
+        # OTA precheck status, sent when it changes (same a2/a3 as the 0089 reply)
+        "0489": {
+            "a2": {NAME: "ota_allowed"},  # No (0), Yes (1)
+            # OK (0), main or expansion SoC below 6% (2), BMS in boot mode without AC (4)
+            "a3": {NAME: "ota_block_reason"},
+        },
         # Interval: Irregular, once every 11? hours
         "0503": _A1783_0503,
         # Interval: Irregular, triggered on app actions, no fixed interval
         "0830": _PPS_VERSIONS_0830,
+        # Clock screen read reply (to 0092), sent when the app opens the device settings
+        "0892": {
+            # The 0421 da record through lcd_repeat_cycle (16 bytes)
+            "a2": _A1783_0421["da"],
+            "a3": {NAME: "lcd_theme_name", TYPE: DeviceHexDataTypes.str.value},
+        },
         # Interval: Irregular, maybe on changes or as response to App status request? Same content as 0421
         "0900": _A1783_0421,
     },
