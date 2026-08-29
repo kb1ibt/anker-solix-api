@@ -964,7 +964,7 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.sile.value,
             },
             "02": {
-                NAME: "ac_input_power",  # Input power total charge
+                NAME: "ac_input_power_total",  # Input power total charge
                 TYPE: DeviceHexDataTypes.sile.value,
             },
             "04": {
@@ -1000,7 +1000,11 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.ui.value,
             },
             "04": {
-                NAME: "pv_input_power?",  # Supposed PV input, but mirrors a6.02
+                # Not PV: this is the AC block's own view of the input, equal to the
+                # a6.02 total at 1796/1796. It reads AC alone under simultaneous AC+DC
+                # input and 0 while DC flows, which is what rules PV out -- a PV field
+                # would track the DC side, and a total would sum both.
+                NAME: "ac_input_power",
                 TYPE: DeviceHexDataTypes.sile.value,
             },
         }
@@ -1013,7 +1017,10 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.ui.value,
             },
             "01": {
-                # Mirrors a6.04; no _total suffix, as a7.04 ac_input_power mirrors a6.02
+                # The DC block's own view of the input, equal to the a6.04 total at
+                # 7431/7431 -- including 152 rows with DC actually flowing (2026-08-18
+                # dual input, 79-85 W), so the match is not an artefact of both sitting
+                # at zero.
                 NAME: "dc_input_power",
                 TYPE: DeviceHexDataTypes.sile.value,
             },
