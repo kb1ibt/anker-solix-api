@@ -1263,11 +1263,13 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.ui.value,
             },
             "11": {
-                NAME: "day_start_time",  # app: lcdStartTime / dayStartTime, minutes from midnight
+                # app: lcdStartTime / dayStartTime. Minutes from midnight as a plain integer;
+                # not *_time, which the decoder reserves for the HH:MM byte-pair fields.
+                NAME: "day_start_minutes",
                 TYPE: DeviceHexDataTypes.sile.value,
             },
             "13": {
-                NAME: "day_end_time",  # app: lcdEndTime / dayEndTime, minutes from midnight
+                NAME: "day_end_minutes",  # app: lcdEndTime / dayEndTime, minutes from midnight
                 TYPE: DeviceHexDataTypes.sile.value,
             },
             "15": {
@@ -1289,11 +1291,11 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.ui.value,
             },
             "19": {
-                NAME: "night_start_time",  # app: nightStartTime, minutes from midnight
+                NAME: "night_start_minutes",  # app: nightStartTime, minutes from midnight
                 TYPE: DeviceHexDataTypes.sile.value,
             },
             "21": {
-                NAME: "night_end_time",  # minutes from midnight
+                NAME: "night_end_minutes",  # minutes from midnight
                 TYPE: DeviceHexDataTypes.sile.value,
             },
         }
