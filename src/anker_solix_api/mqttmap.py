@@ -1300,14 +1300,15 @@ _A1783_0421 = {
             },
         }
     },
-    # Uncharacterized. 04-typed 5-byte blob; corpus (191,302 c421 frames): data
-    # 00 00 00 00 00 in 190,974, 03 cc 06 93 6a in 319 -- a rare event flips byte 0.
+    # 04-typed 5-byte blob, every data byte exposed. Corpus (191,302 c421 frames):
+    # data 00 00 00 00 00 in 190,974; a rare 03 cc 06 93 6a event (319) moves dc_00..dc_04.
     "dc": {
         BYTES: {
-            "00": {
-                NAME: "unknown_0421_dc",
-                TYPE: DeviceHexDataTypes.ui.value,
-            },
+            "00": {NAME: "unknown_0421_dc_00", TYPE: DeviceHexDataTypes.ui.value},
+            "01": {NAME: "unknown_0421_dc_01", TYPE: DeviceHexDataTypes.ui.value},
+            "02": {NAME: "unknown_0421_dc_02", TYPE: DeviceHexDataTypes.ui.value},
+            "03": {NAME: "unknown_0421_dc_03", TYPE: DeviceHexDataTypes.ui.value},
+            "04": {NAME: "unknown_0421_dc_04", TYPE: DeviceHexDataTypes.ui.value},
         }
     },
     # Seven 4-byte version quads, LE (02 02 09 01 reads v1.9.2.2). Slots 00 and 08 are
@@ -1349,15 +1350,30 @@ _A1783_0421 = {
             },
         }
     },
-    # Uncharacterized. 04-typed ~20-byte config blob: 01 01 01 01 00 1f XX 00...
-    # Byte 0 constant 01; byte 6 (XX) is a per-era config value, static within an era --
-    # 07 in the older collector corpus, 35 in every 2026-09-07/17/18 frame (66k+).
+    # 04-typed ~20-byte config blob, every data byte exposed. fa_06 is a per-era
+    # config value (07 in the older corpus, 35 in every 2026-09 frame); rest static so far.
     "fa": {
         BYTES: {
-            "00": {
-                NAME: "unknown_0421_fa",
-                TYPE: DeviceHexDataTypes.ui.value,
-            },
+            "00": {NAME: "unknown_0421_fa_00", TYPE: DeviceHexDataTypes.ui.value},
+            "01": {NAME: "unknown_0421_fa_01", TYPE: DeviceHexDataTypes.ui.value},
+            "02": {NAME: "unknown_0421_fa_02", TYPE: DeviceHexDataTypes.ui.value},
+            "03": {NAME: "unknown_0421_fa_03", TYPE: DeviceHexDataTypes.ui.value},
+            "04": {NAME: "unknown_0421_fa_04", TYPE: DeviceHexDataTypes.ui.value},
+            "05": {NAME: "unknown_0421_fa_05", TYPE: DeviceHexDataTypes.ui.value},
+            "06": {NAME: "unknown_0421_fa_06", TYPE: DeviceHexDataTypes.ui.value},
+            "07": {NAME: "unknown_0421_fa_07", TYPE: DeviceHexDataTypes.ui.value},
+            "08": {NAME: "unknown_0421_fa_08", TYPE: DeviceHexDataTypes.ui.value},
+            "09": {NAME: "unknown_0421_fa_09", TYPE: DeviceHexDataTypes.ui.value},
+            "10": {NAME: "unknown_0421_fa_10", TYPE: DeviceHexDataTypes.ui.value},
+            "11": {NAME: "unknown_0421_fa_11", TYPE: DeviceHexDataTypes.ui.value},
+            "12": {NAME: "unknown_0421_fa_12", TYPE: DeviceHexDataTypes.ui.value},
+            "13": {NAME: "unknown_0421_fa_13", TYPE: DeviceHexDataTypes.ui.value},
+            "14": {NAME: "unknown_0421_fa_14", TYPE: DeviceHexDataTypes.ui.value},
+            "15": {NAME: "unknown_0421_fa_15", TYPE: DeviceHexDataTypes.ui.value},
+            "16": {NAME: "unknown_0421_fa_16", TYPE: DeviceHexDataTypes.ui.value},
+            "17": {NAME: "unknown_0421_fa_17", TYPE: DeviceHexDataTypes.ui.value},
+            "18": {NAME: "unknown_0421_fa_18", TYPE: DeviceHexDataTypes.ui.value},
+            "19": {NAME: "unknown_0421_fa_19", TYPE: DeviceHexDataTypes.ui.value},
         }
     },
     # ASCII digits (ms epoch), not a number. Absent on unsolicited telemetry; identifies the
