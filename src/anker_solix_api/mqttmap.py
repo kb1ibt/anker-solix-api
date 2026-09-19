@@ -1300,6 +1300,16 @@ _A1783_0421 = {
             },
         }
     },
+    # Uncharacterized. 04-typed 5-byte blob; corpus (191,302 c421 frames): data
+    # 00 00 00 00 00 in 190,974, 03 cc 06 93 6a in 319 -- a rare event flips byte 0.
+    "dc": {
+        BYTES: {
+            "00": {
+                NAME: "unknown_0421_dc",
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
+        }
+    },
     # Seven 4-byte version quads, LE (02 02 09 01 reads v1.9.2.2). Slots 00 and 08 are
     # unnamed: on this hardware they duplicate or read v0.0.0.0 and cannot be told apart.
     "f9": {
@@ -1336,6 +1346,17 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.var.value,
                 "values": 4,
                 "reversed": True,
+            },
+        }
+    },
+    # Uncharacterized. 04-typed ~20-byte config blob: 01 01 01 01 00 1f XX 00...
+    # Byte 0 constant 01; byte 6 (XX) is a per-era config value, static within an era --
+    # 07 in the older collector corpus, 35 in every 2026-09-07/17/18 frame (66k+).
+    "fa": {
+        BYTES: {
+            "00": {
+                NAME: "unknown_0421_fa",
+                TYPE: DeviceHexDataTypes.ui.value,
             },
         }
     },
