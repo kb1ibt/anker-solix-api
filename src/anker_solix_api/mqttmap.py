@@ -7296,6 +7296,9 @@ SOLIXMQTTMAP: Final[dict] = {
         },
         "0312": {
             "a2": {NAME: "country_code", TYPE: DeviceHexDataTypes.str.value},  # "DE"
+            # a3 = signed int32, observed -4 (US/EDT alongside a2="US"); proposed UTC
+            # offset in hours, UNCONFIRMED -- no app_log field name for it.
+            "a3": {NAME: "utc_offset", SIGNED: True},
             "fe": {NAME: "msg_timestamp"},
         },
         # Interval: only with status request command. Contains all settings and consumption data
