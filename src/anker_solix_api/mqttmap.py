@@ -900,13 +900,13 @@ _A1783_0421 = {
                 NAME: "mtu_size",  # app: mtuSize, per-device (204 here, 220 elsewhere)
                 TYPE: DeviceHexDataTypes.sile.value,
             },
-            "09": {
-                NAME: "weak_light_lock_flag",  # app: weakLightLockFlag
-                TYPE: DeviceHexDataTypes.ui.value,
-            },
             "10": {
                 NAME: "silent_charge_power",  # app: silentRechargePower, W
                 TYPE: DeviceHexDataTypes.sile.value,
+            },
+            "12": {
+                NAME: "weak_light_lock_flag",  # app: weakLightLockFlag
+                TYPE: DeviceHexDataTypes.ui.value,
             },
         }
     },
@@ -3546,8 +3546,7 @@ _A2345_0a00 = (
                     {NAME: "clock_settings", MASK: 0xFF},
                     {NAME: "clock_switch", MASK: 0x80},
                     {NAME: "holiday_switch", MASK: 0x40},
-                    {NAME: "custom_theme_active", MASK: 0x04},
-                    {NAME: "stock_theme_active", MASK: 0x02},
+                    {NAME: "theme_index", MASK: 0x3F},
                 ],
                 "01": {
                     NAME: "theme_id",
@@ -3634,6 +3633,168 @@ _A2345_0a00 = (
         },
         # "bd" same as 0303 a8
         # "be" same as 0303 a9
+        "fe": {NAME: "msg_timestamp"},
+    }
+)
+
+_A91B2_0303 = (
+    {
+        # 240W Prime Charging Station
+        TOPIC: "state_info",
+    }
+    | {
+        f"{0xA2 + idx:02x}": {
+            BYTES: {
+                "00": {NAME: f"{port}_status", TYPE: DeviceHexDataTypes.ui.value},
+                "01": {
+                    NAME: f"{port}_voltage",
+                    TYPE: DeviceHexDataTypes.sile.value,
+                    FACTOR: 0.001,
+                },
+                "03": {
+                    NAME: f"{port}_current",
+                    TYPE: DeviceHexDataTypes.sile.value,
+                    FACTOR: 0.001,
+                },
+                "05": {
+                    NAME: f"{port}_power",
+                    TYPE: DeviceHexDataTypes.sile.value,
+                    FACTOR: 0.01,
+                },
+            }
+        }
+        for idx, port in enumerate(
+            ["usbc_1", "usbc_2", "usbc_3", "usbc_4", "usba_1", "usba_2"]
+        )
+    }
+    | {
+        "fe": {NAME: "msg_timestamp"},
+    }
+)
+
+_A91B2_0a00 = (
+    {
+        "a2": {NAME: "sw_version"},  # 2 byte version int, e.g. 6404 = v1.1.2.4
+        "a3": {NAME: "unknown_a3"},  # 2 byte int, 0 observed
+    }
+    | {
+        f"{0xA4 + idx:02x}": {
+            BYTES: {
+                "00": {NAME: f"{port}_status", TYPE: DeviceHexDataTypes.ui.value},
+                "01": {
+                    NAME: f"{port}_voltage",
+                    TYPE: DeviceHexDataTypes.sile.value,
+                    FACTOR: 0.001,
+                },
+                "03": {
+                    NAME: f"{port}_current",
+                    TYPE: DeviceHexDataTypes.sile.value,
+                    FACTOR: 0.001,
+                },
+                "05": {
+                    NAME: f"{port}_power",
+                    TYPE: DeviceHexDataTypes.sile.value,
+                    FACTOR: 0.01,
+                },
+            }
+        }
+        for idx, port in enumerate(
+            ["usbc_1", "usbc_2", "usbc_3", "usbc_4", "usba_1", "usba_2"]
+        )
+    }
+    | {
+        # AC outlets (aa, ab) and USB-C (b0-b3) share the 18 byte schedule record
+        tag: {
+            BYTES: {
+                "00": {NAME: f"{port}_switch", TYPE: DeviceHexDataTypes.ui.value},
+                "01": {
+                    NAME: f"{port}_start_switch",  # 0 (off), 1 (on), ff (unset)
+                    TYPE: DeviceHexDataTypes.ui.value,
+                },
+                "02": {
+                    NAME: f"{port}_start_hour",
+                    TYPE: DeviceHexDataTypes.ui.value,
+                },
+                "03": {
+                    NAME: f"{port}_start_minute",
+                    TYPE: DeviceHexDataTypes.ui.value,
+                },
+                "04": {
+                    NAME: f"{port}_start_weekdays",  # Bitmask: 0:sun:sat:fri:thu:wed:tue:mon
+                    TYPE: DeviceHexDataTypes.ui.value,
+                },
+                "05": {
+                    NAME: f"{port}_end_switch",  # 0 (off), 1 (on), ff (unset)
+                    TYPE: DeviceHexDataTypes.ui.value,
+                },
+                "06": {
+                    NAME: f"{port}_end_hour",
+                    TYPE: DeviceHexDataTypes.ui.value,
+                },
+                "07": {
+                    NAME: f"{port}_end_minute",
+                    TYPE: DeviceHexDataTypes.ui.value,
+                },
+                "08": {
+                    NAME: f"{port}_end_weekdays",  # Bitmask: 0:sun:sat:fri:thu:wed:tue:mon
+                    TYPE: DeviceHexDataTypes.ui.value,
+                },
+                "09": {
+                    NAME: f"{port}_timer_switch",
+                    TYPE: DeviceHexDataTypes.ui.value,
+                },
+                "10": {
+                    NAME: f"{port}_timer_seconds",
+                    TYPE: DeviceHexDataTypes.var.value,
+                },
+                "14": {
+                    NAME: f"{port}_timer_remaining_seconds",
+                    TYPE: DeviceHexDataTypes.var.value,
+                },
+            }
+        }
+        for tag, port in [
+            ("aa", "ac_1"),
+            ("ab", "ac_2"),
+            ("b0", "usbc_1"),
+            ("b1", "usbc_2"),
+            ("b2", "usbc_3"),
+            ("b3", "usbc_4"),
+        ]
+    }
+    | {
+        "ac": {
+            TYPE: DeviceHexDataTypes.bin.value,
+            BYTES: {
+                "00": [
+                    {NAME: "clock_switch", MASK: 0x80},
+                    {NAME: "theme_index", MASK: 0x7F},
+                ],
+            },
+        },
+        "ad": {
+            TYPE: DeviceHexDataTypes.bin.value,
+            BYTES: {
+                "00": [
+                    {NAME: "display_brightness", MASK: 0xF0},
+                    {NAME: "display_timeout_mode", MASK: 0x0F},
+                ],
+            },
+        },
+        "ae": {
+            BYTES: {
+                "00": {NAME: "charging_mode", TYPE: DeviceHexDataTypes.ui.value},
+                "01": {NAME: "charging_submode", TYPE: DeviceHexDataTypes.ui.value},
+            },
+        },
+        "af": {
+            BYTES: {
+                "00": {NAME: "ota_busy", TYPE: DeviceHexDataTypes.ui.value},
+                "01": {NAME: "ota_state", TYPE: DeviceHexDataTypes.ui.value},
+            },
+        },
+        "b4": {NAME: "clock_mode"},  # 0 (12h), 1 (24h)
+        "b5": {NAME: "ac_light_mode"},  # 0 (normal), 1 (sleep)
         "fe": {NAME: "msg_timestamp"},
     }
 )
@@ -6995,6 +7156,9 @@ SOLIXMQTTMAP: Final[dict] = {
         },
         "0312": {
             "a2": {NAME: "country_code", TYPE: DeviceHexDataTypes.str.value},  # "DE"
+            # a3 = signed int32, observed -4 (US/EDT alongside a2="US"); proposed UTC
+            # offset in hours, UNCONFIRMED -- no app_log field name for it.
+            "a3": {NAME: "utc_offset", SIGNED: True},
             "fe": {NAME: "msg_timestamp"},
         },
         # Interval: only with status request command. Contains all settings and consumption data
@@ -7006,7 +7170,7 @@ SOLIXMQTTMAP: Final[dict] = {
                         {NAME: "clock_settings", MASK: 0xFF},
                         {NAME: "clock_switch", MASK: 0x80},
                         {NAME: "holiday_switch", MASK: 0x40},
-                        {NAME: "theme_type", MASK: 0x06},
+                        {NAME: "theme_index", MASK: 0x3F},
                     ],
                 },
             },
@@ -7066,10 +7230,10 @@ SOLIXMQTTMAP: Final[dict] = {
             "a3": {NAME: "set_port_switch"},
             "fe": {NAME: "msg_timestamp"},
         },
-        # Interval: ~1 second with realtime trigger. USB port consumption data (same layout as A2345).
-        "0303": _A2345_0303,
+        # Interval: ~1 second with realtime trigger. USB port consumption data.
+        "0303": _A91B2_0303,
         # Full device status including AC outlet switch states, sent on status request.
-        "0a00": _A2345_0a00,
+        "0a00": _A91B2_0a00,
     },
     # Alternator charger
     "AS200": {
