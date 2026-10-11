@@ -861,6 +861,11 @@ _A1783_0421 = {
                 "values": 4,
                 "reversed": True,
             },
+            "30": {
+                # Factory-set: base (0, ac_input_limit_max 1800 W), high (1, 2300 W)
+                NAME: "model_variant",
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
         }
     },
     "a3": {
@@ -892,9 +897,16 @@ _A1783_0421 = {
                 TYPE: DeviceHexDataTypes.ui.value,
             },
             "07": {
-                # app: wifiSignalStrength. RSSI encoded as 2 * (100 + rssi_dbm)
+                # app: wifiSignalStrength, sent as 2 * (100 + dBm). Converted to the
+                # library's wifi_signal percent: -85 dBm (0 %) to -50 dBm (100 %).
                 NAME: "wifi_signal",
-                TYPE: DeviceHexDataTypes.ui.value,
+                TYPE: DeviceHexDataTypes.bin.value,
+                LENGTH: 1,
+                STATE_CONVERTER: lambda value, state, cache: (
+                    round(max(0, min(100, (value[0] / 2 - 100 + 85) * 100 / 35)))
+                    if value is not None
+                    else state
+                ),
             },
             "08": {
                 NAME: "mtu_size",  # app: mtuSize, per-device (204 here, 220 elsewhere)
@@ -1008,10 +1020,9 @@ _A1783_0421 = {
                 NAME: "battery_soc",  # Total SOC of main + Exp batteries?
                 TYPE: DeviceHexDataTypes.ui.value,
             },
-            "03": {  # Note: This seems to be actually 0 for A1783/85
-                NAME: "battery_soh",  # Battery SOH
-                TYPE: DeviceHexDataTypes.ui.value,
-            },
+            # 03-04 (no battery_soh): the firmware sends only the low byte of the SoH
+            # in 0.1 % (100.0 % = 1000 -> 232) with a zero high byte, so the reading
+            # wraps every 25.6 % and no factor recovers the percentage.
         }
     },
     "a6": {
@@ -1184,15 +1195,12 @@ _A1783_0421 = {
                 OFFSET: 0,
             },
             {
-                NAME: "exp_1_health",  # app: subPackageHealth
-                TYPE: DeviceHexDataTypes.ui.value,
-                OFFSET: 0,
-            },
-            {
                 # Firmware constant 1; the locate blink runs without changing it
                 NAME: "exp_1_blink_status",  # app: subPackageBlinkStatus
                 TYPE: DeviceHexDataTypes.ui.value,
-                OFFSET: 0,
+                # Skips the app's subPackageHealth: the main pack's truncated SoH byte
+                # (as a5 03), not the expansion's, so it carries no usable value
+                OFFSET: 1,
             },
             {
                 # Reported output state; the expansion BMS re-closes it ~2 s after an app "off"
@@ -1327,6 +1335,21 @@ _A1783_0421 = {
                 # app: lcdTheme. Clock style 1 (0), 2 (1), 3 (2)
                 {NAME: "lcd_theme", MASK: 0x7F},
             ],
+            "01": {
+                NAME: "lcd_theme_download_state",
+                TYPE: DeviceHexDataTypes.ui.value,
+            },
+            "02": {
+                # A change while bound and on WiFi starts the theme download
+                NAME: "lcd_theme_id",
+                TYPE: DeviceHexDataTypes.var.value,
+                SIGNED: False,
+            },
+            "06": {
+                NAME: "lcd_theme_size",  # the theme's second word; the same download rule
+                TYPE: DeviceHexDataTypes.var.value,
+                SIGNED: False,
+            },
             "10": {
                 NAME: "lcd_time_format",  # app: lcdTimeFormat. 24-hour (1), 12-hour (0)
                 TYPE: DeviceHexDataTypes.ui.value,
@@ -1389,10 +1412,16 @@ _A1783_0421 = {
             },
         }
     },
-    # Seven 4-byte version quads, LE (02 02 09 01 reads v1.9.2.2). Slots 00 and 08 are
-    # unnamed: on this hardware they duplicate or read v0.0.0.0 and cannot be told apart.
+    # Seven 4-byte version quads, LE (02 02 09 01 reads v1.9.2.2). Slot 08 (app:
+    # MPPTVersion) is never written and reads v0.0.0.0.
     "f9": {
         BYTES: {
+            "00": {
+                NAME: "mcu_version",  # app: mcuVersion
+                TYPE: DeviceHexDataTypes.var.value,
+                "values": 4,
+                "reversed": True,
+            },
             "04": {
                 NAME: "sub_mcu_version",  # app: subMCUVersion
                 TYPE: DeviceHexDataTypes.var.value,
@@ -1464,49 +1493,47 @@ _A1783_0421 = {
 }
 
 _A1783_0503 = {
+    # Lifetime totals, persisted to flash and never reset, that grow only while a
+    # Time-of-Use period is active. Sent only while cloud-bound, so never over BLE.
     TOPIC: "state_info",
     "a2": {
-        # Energy stats
         BYTES: {
             "00": {
-                NAME: "0503_00_energy?",  # unknown
+                NAME: "solar_to_battery_energy",  # kWh (Wh x 0.001)
                 TYPE: DeviceHexDataTypes.var.value,
                 FACTOR: 0.001,
                 SIGNED: False,
             },
             "04": {
-                NAME: "0503_04_energy?",  # unknown
+                NAME: "grid_to_battery_energy",  # kWh (Wh x 0.001)
                 TYPE: DeviceHexDataTypes.var.value,
                 FACTOR: 0.001,
                 SIGNED: False,
             },
             "08": {
-                NAME: "0503_08_energy?",  # unknown
+                NAME: "battery_to_load_energy",  # kWh (Wh x 0.001)
                 TYPE: DeviceHexDataTypes.var.value,
                 FACTOR: 0.001,
                 SIGNED: False,
             },
             "12": {
-                NAME: "0503_12_energy?",  # unknown
+                NAME: "tou_peak_seconds",  # time spent in the Peak period
                 TYPE: DeviceHexDataTypes.var.value,
-                FACTOR: 0.001,
                 SIGNED: False,
             },
             "16": {
-                NAME: "0503_16_energy?",  # unknown
+                NAME: "tou_off_peak_seconds",
                 TYPE: DeviceHexDataTypes.var.value,
-                FACTOR: 0.001,
                 SIGNED: False,
             },
             "20": {
-                NAME: "0503_20_energy?",  # unknown
+                NAME: "tou_super_off_peak_seconds",
                 TYPE: DeviceHexDataTypes.var.value,
-                FACTOR: 0.001,
                 SIGNED: False,
             },
         },
     },
-    "a3": {NAME: "energy_timestamp"},
+    "a3": {NAME: "energy_timestamp"},  # RTC time of the last flash save
 }
 
 _A1780_0405 = {
@@ -3429,27 +3456,29 @@ _A2345_0303 = (
     }
     | {
         "a8": {
-            # same as 0a00 bd
+            # Per USB-C port, a {u16, u16} pair of PD-controller words, as in 0a00 bd
             BYTES: {
-                "00": {
-                    NAME: "unknown_a8_00_01",
+                f"{4 * idx + word:02d}": {
+                    NAME: f"usbc_{idx + 1}_device_{part}?",
                     TYPE: DeviceHexDataTypes.sile.value,
-                },
-                "01": {
-                    NAME: "unknown_a8_01_02",
-                    TYPE: DeviceHexDataTypes.sile.value,
-                },
-                "02": {
-                    NAME: "unknown_a8_02_03",
-                    TYPE: DeviceHexDataTypes.sile.value,
-                },
-                "03": {
-                    NAME: "unknown_a8_03",
-                    TYPE: DeviceHexDataTypes.ui.value,
-                },
+                    SIGNED: False,
+                }
+                for idx in range(4)
+                for word, part in ((0, "vid"), (2, "pid"))
             }
         },
-        # "a9" same as 0a00 be
+        # Per USB-C port, the identified device's class and model code, as in 0a00 be
+        "a9": {
+            BYTES: {
+                f"{4 * idx + word:02d}": {
+                    NAME: f"usbc_{idx + 1}_device_{part}",
+                    TYPE: DeviceHexDataTypes.sile.value,
+                    SIGNED: False,
+                }
+                for idx in range(4)
+                for word, part in ((0, "class"), (2, "code"))
+            }
+        },
         "fe": {NAME: "msg_timestamp"},
     }
 )
@@ -3570,9 +3599,7 @@ _A2345_0a00 = (
         "b5": {
             NAME: "clock_mode",  # 0 (12h), 1 (24h)
         },
-        "b6": {
-            NAME: "unknown_b6",
-        },
+        # b6: the snapshot builder (cmd200_get_all_info) writes a constant 01 here
         "b8": {
             BYTES: {
                 "00": {
@@ -3631,8 +3658,64 @@ _A2345_0a00 = (
                 for idx, port in enumerate(["c1", "c2", "c3", "c4"])
             }
         },
-        # "bd" same as 0303 a8
-        # "be" same as 0303 a9
+        # Port fault bits (u16, high byte 0). USB-C/USB-A: byte 5 of the port's PD
+        # controller register 0x8f, latched after 5 non-zero reads, cleared after 10 zero.
+        "a3": {
+            BYTES: {
+                "00": [
+                    # Either NTC above 125 C, held until both are below 95 C
+                    {NAME: "over_temperature", MASK: 0x01},
+                    *[
+                        {NAME: f"usbc_{port}_fault?", MASK: 0x01 << port}
+                        for port in range(1, 5)
+                    ],
+                    {NAME: "usba_fault?", MASK: 0x20},  # either USB-A port
+                ],
+            },
+        },
+        # The same pair as the A91B2's 0a00 af
+        "b2": {
+            BYTES: {
+                # 1 while an upgrade is armed, which holds back the 0303 stream
+                "00": {NAME: "ota_busy", TYPE: DeviceHexDataTypes.ui.value},
+                "01": {NAME: "ota_progress", TYPE: DeviceHexDataTypes.ui.value},  # %
+            },
+        },
+        "b7": {
+            BYTES: {
+                # 6 when all five ports' PD controllers support the identity read (read
+                # once at boot), else 2; gates the bd read. Byte 00 is a constant ff.
+                "01": {NAME: "usbc_identity_support?", TYPE: DeviceHexDataTypes.ui.value},
+            },
+        },
+        "bb": {NAME: "compatibility_switch"},  # app: compatibilitySwitchValue
+        "bf": {NAME: "device_identification_switch"},  # app: deviceIdentificationSwitchValue
+        # Per USB-C port, two PD-controller words read while a sink is attached: {fffa,
+        # fffb} with no device, {0, 0} while unresolved. Same shape as 0303 a8.
+        "bd": {
+            BYTES: {
+                f"{4 * idx + word:02d}": {
+                    NAME: f"usbc_{idx + 1}_device_{part}?",
+                    TYPE: DeviceHexDataTypes.sile.value,
+                    SIGNED: False,
+                }
+                for idx in range(4)
+                for word, part in ((0, "vid"), (2, "pid"))
+            }
+        },
+        # Per USB-C port, the identified device: class (1 Apple, 10 Anker, 14 Lenovo, ...)
+        # and model code, both ffff when none
+        "be": {
+            BYTES: {
+                f"{4 * idx + word:02d}": {
+                    NAME: f"usbc_{idx + 1}_device_{part}",
+                    TYPE: DeviceHexDataTypes.sile.value,
+                    SIGNED: False,
+                }
+                for idx in range(4)
+                for word, part in ((0, "class"), (2, "code"))
+            }
+        },
         "fe": {NAME: "msg_timestamp"},
     }
 )
@@ -3675,7 +3758,21 @@ _A91B2_0303 = (
 _A91B2_0a00 = (
     {
         "a2": {NAME: "sw_version"},  # 2 byte version int, e.g. 6404 = v1.1.2.4
-        "a3": {NAME: "unknown_a3"},  # 2 byte int, 0 observed
+        # Port fault bits (u16, high byte 0); bit 0 tracks a level whose quantity is
+        # unidentified and stays unnamed. USB-C: byte 5 of the port's PD controller
+        # register 0x8f, latched after 2 non-zero reads, cleared after 5 zero.
+        "a3": {
+            BYTES: {
+                "00": [
+                    *[
+                        {NAME: f"usbc_{port}_fault?", MASK: 0x01 << port}
+                        for port in range(1, 5)
+                    ],
+                    # A USB-A rail below 4.0 V for 20 passes
+                    {NAME: "usba_undervoltage", MASK: 0x20},
+                ],
+            },
+        },
     }
     | {
         f"{0xA4 + idx:02x}": {
@@ -3789,8 +3886,9 @@ _A91B2_0a00 = (
         },
         "af": {
             BYTES: {
+                # 1 while an upgrade runs, which holds back the 0303 stream
                 "00": {NAME: "ota_busy", TYPE: DeviceHexDataTypes.ui.value},
-                "01": {NAME: "ota_state", TYPE: DeviceHexDataTypes.ui.value},
+                "01": {NAME: "ota_progress", TYPE: DeviceHexDataTypes.ui.value},  # %
             },
         },
         "b4": {NAME: "clock_mode"},  # 0 (12h), 1 (24h)
@@ -7105,7 +7203,7 @@ SOLIXMQTTMAP: Final[dict] = {
         # "0214": CMD_TBD_SWITCH,  # unknown client command, fields a2
         # "0223": CMD_TBD_SWITCH,  # unknown client command, fields a2
         "0300": {
-            "a4": {NAME: "unknown_0300_a4?"},  # does not seem to be usage_mode
+            "a4": {NAME: "utc_offset", SIGNED: True},  # s8 hours, as 0312 a3
             "fe": {NAME: "msg_timestamp"},
         },
         # Interval: Upon change of the referred port toggle, usable by data extractor to adjust correct port state
@@ -7183,7 +7281,8 @@ SOLIXMQTTMAP: Final[dict] = {
                 NAME: "theme_url",
                 TYPE: DeviceHexDataTypes.str.value,
             },
-            "a6": {NAME: "unknown_0a02_a6"},
+            # Display page 5 shows (1) or hides (0) the per-port icons and values; set by 0222
+            "a6": {NAME: "port_widgets_switch"},
             "fe": {NAME: "msg_timestamp"},
         },
     },
